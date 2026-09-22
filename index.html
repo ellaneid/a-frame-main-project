@@ -1,35 +1,167 @@
-<html>
-  <head>
-    <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
-  </head>
-  <body>
-<a-scene background="color: #061A3A">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>02 — Displaying a .glb Mesh</title>
+  <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
 
-  <a-plane rotation="-90 0 0" width="500" height="500" color="#333"></a-plane>
-  <a-sky color="#061A3A" radius="500"></a-sky>
-    <a-entity light="type: ambient; color: #BBB"></a-entity>
-    <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="1 2 1"></a-entity>
-    <a-entity light="type: point; color: #FFD27A; intensity: 1.2; distance: 12; decay: 2" position="-8 4 -8">
-      <a-animation attribute="light.intensity" from="0.25" to="1.2" dur="1800" direction="alternate" repeat="indefinite"></a-animation>
-    </a-entity>
-    <a-entity light="type: point; color: #FFD27A; intensity: 1.2; distance: 12; decay: 2" position="8 4 -8">
-      <a-animation attribute="light.intensity" from="0.25" to="1.2" dur="2200" direction="alternate" repeat="indefinite" delay="500"></a-animation>
-    </a-entity>
-    <a-entity light="type: point; color: #FFD27A; intensity: 1.2; distance: 12; decay: 2" position="8 4 8">
-      <a-animation attribute="light.intensity" from="0.25" to="1.2" dur="2000" direction="alternate" repeat="indefinite" delay="900"></a-animation>
-    </a-entity>
-    <a-entity light="type: point; color: #FFD27A; intensity: 1.2; distance: 12; decay: 2" position="-8 4 8">
-      <a-animation attribute="light.intensity" from="0.25" to="1.2" dur="2400" direction="alternate" repeat="indefinite" delay="300"></a-animation>
-    </a-entity>
-  <a-assets>
-    <a-asset-item id="room" src="myRoom_v2.glb"></a-asset-item>
-  </a-assets>
+  <script>
+      AFRAME.registerComponent('room-walls', {
+        schema: {
+          minX: { type: 'number', default: -9.5 },
+          maxX: { type: 'number', default: 9.5 },
+          minZ: { type: 'number', default: -9.5 },
+          maxZ: { type: 'number', default: 9.5 },
+          radius: { type: 'number', default: 0.35 },
+          guides: { type: 'string', default: '#wall-min-z, #wall-max-z, #wall-min-x, #wall-max-x' }
+        },
+        updateGuides: function () {
+          const bounds = this.data;
+          const guideIds = this.data.guides.split(',').map((guide) => guide.trim());
+          const guides = guideIds.map((id) => document.querySelector(id));
+          if (guides.every((guide) => guide)) {
+            guides[0].object3D.position.set(0, 2, bounds.minZ);
+            guides[0].setAttribute('width', bounds.maxX - bounds.minX);
+            guides[1].object3D.position.set(0, 2, bounds.maxZ);
+            guides[1].setAttribute('width', bounds.maxX - bounds.minX);
+            guides[2].object3D.position.set(bounds.minX, 2, 0);
+            guides[2].setAttribute('depth', bounds.maxZ - bounds.minZ);
+            guides[3].object3D.position.set(bounds.maxX, 2, 0);
+            guides[3].setAttribute('depth', bounds.maxZ - bounds.minZ);
+          }
+        },
+        update: function () {
+          this.updateGuides();
+        },
+        tick: function () {
+          const position = this.el.object3D.position;
+          const bounds = this.data;
+          position.x = Math.max(bounds.minX + bounds.radius, Math.min(bounds.maxX - bounds.radius, position.x));
+          position.z = Math.max(bounds.minZ + bounds.radius, Math.min(bounds.maxZ - bounds.radius, position.z));
+          this.updateGuides();
+        }
+      });
 
-  <!-- Using the asset management system. -->
-  <a-gltf-model src="#room" position="0 0 0"></a-gltf-model>
+      AFRAME.registerComponent('room-obstacles', {
+        schema: {
+          obstacles: { type: 'string', default: '#desk-collision, #bed-collision' },
+          radius: { type: 'number', default: 0.35 }
+        },
+        tick: function () {
+          const position = this.el.object3D.position;
+          const radius = this.data.radius;
+          const obstacles = this.data.obstacles
+            .split(',')
+            .map((selector) => document.querySelector(selector.trim()))
+            .filter((obstacle) => obstacle);
 
-  <a-camera position="0 25 0"></a-camera>
+          obstacles.forEach((obstacle) => {
+            const obstaclePosition = obstacle.object3D.position;
+            const width = obstacle.getAttribute('width') / 2 + radius;
+            const depth = obstacle.getAttribute('depth') / 2 + radius;
+            const insideX = Math.abs(position.x - obstaclePosition.x) < width;
+            const insideZ = Math.abs(position.z - obstaclePosition.z) < depth;
 
-</a-scene>
-  </body>
-</html>
+            if (!insideX || !insideZ) return;
+
+            const distanceToX = width - Math.abs(position.x - obstaclePosition.x);
+            const distanceToZ = depth - Math.abs(position.z - obstaclePosition.z);
+            if (distanceToX < distanceToZ) {
+              position.x = obstaclePosition.x + (position.x < obstaclePosition.x ? -width : width);
+            } else {
+              position.z = obstaclePosition.z + (position.z < obstaclePosition.z ? -depth : depth);
+            }
+          });
+        }
+      });
+
+      AFRAME.registerComponent('jump', {
+      schema: {
+        speed: { type: 'number', default: 7.5 },
+        gravity: { type: 'number', default: 13 }
+      },
+      init: function () {
+        this.baseY = this.el.object3D.position.y;
+        this.velocity = 0;
+        this.onKeyDown = (event) => {
+          const grounded = this.el.object3D.position.y <= this.baseY + 0.001;
+          if (event.code === 'Space' && grounded) {
+            event.preventDefault();
+            this.velocity = this.data.speed;
+          }
+        };
+        window.addEventListener('keydown', this.onKeyDown);
+      },
+      tick: function (time, delta) {
+        if (!this.velocity) return;
+
+        const seconds = delta / 1000;
+        const position = this.el.object3D.position;
+        position.y += this.velocity * seconds;
+        this.velocity -= this.data.gravity * seconds;
+
+        if (position.y <= this.baseY) {
+          position.y = this.baseY;
+          this.velocity = 0;
+        }
+      },
+      remove: function () {
+        window.removeEventListener('keydown', this.onKeyDown);
+      }
+    });
+</script>
+
+</head>
+<body>
+
+  <a-scene background="color: #202025" renderer="physicallyCorrectLights: true">
+
+    <a-assets>
+      <a-asset-item id="Room-Model" src="myRoom_v2.glb"></a-asset-item>
+    </a-assets>
+
+    <a-entity
+      gltf-model="#Room-Model"
+      position="0 0 -3"
+      scale="0.3 0.3 0.3"
+      rotation="0 180 0">
+    </a-entity>
+
+    <!-- ============ LIGHTING SETUP ============ -->
+    <a-plane rotation="-90 0 0" width="20" height="20" color="#445"></a-plane>
+
+    <a-entity light="type: ambient; color: #BBB; intensity: 0.35"></a-entity>
+
+    <a-entity light="type: point; color: #F6E7C6; intensity: 4; distance: 35; decay: 1.5" position="-4 7.5 -4"></a-entity>
+    <a-entity light="type: point; color: #F6E7C6; intensity: 4; distance: 35; decay: 1.5" position="4 7.5 -4"></a-entity>
+    <a-entity light="type: point; color: #F6E7C6; intensity: 4; distance: 35; decay: 1.5" position="4 7.5 4"></a-entity>
+    <a-entity light="type: point; color: #F6E7C6; intensity: 4; distance: 35; decay: 1.5" position="-4 7.5 4"></a-entity>
+
+    <a-entity light="type: directional; color: #FFF; intensity: 2.6" position="0 2 1"></a-entity>
+
+    <!-- =================== Visible collision guides: keep these positions matched to room-walls limits above. =================== -->
+    <a-box id="wall-min-z" position="0 2 -9.5" width="19" height="4" depth="0.1" material="color: red; opacity: 0.35; transparent: true; wireframe: true"></a-box>
+    <a-box id="wall-max-z" position="0 2 9.5" width="19" height="4" depth="0.1" material="color: red; opacity: 0.35; transparent: true; wireframe: true"></a-box>
+    <a-box id="wall-min-x" position="-9.5 2 0" width="0.1" height="4" depth="19" material="color: red; opacity: 0.35; transparent: true; wireframe: true"></a-box>
+    <a-box id="wall-max-x" position="9.5 2 0" width="0.1" height="4" depth="19" material="color: red; opacity: 0.35; transparent: true; wireframe: true"></a-box>
+
+    <!-- Adjustable desk and bed collision guides. Move these boxes to match the model. -->
+    <a-box id="bed-collision" position="-4 3.5 -8" width="4" height="2" depth="9.5" material="color: yellow; opacity: 0.35; transparent: true; wireframe: true"></a-box>
+    <a-box id="desk-collision" position="2 1 0.5" width="3.5" height="1.5" depth="4" material="color: cyan; opacity: 0.35; transparent: true; wireframe: true"></a-box>
+
+    <a-sky color="#202025"></a-sky>
+
+    <a-entity
+      camera
+      look-controls
+      wasd-controls="acceleration: 40"
+      room-walls="minX: -6; maxX: 4; minZ: -13; maxZ: 7.5; radius: 0.35"
+      room-obstacles="obstacles: #desk-collision, #bed-collision; radius: 0.35"
+      jump
+      position="0 6 3">
+    </a-entity>
+
+  </a-scene>
+
+</body>
+</ht
