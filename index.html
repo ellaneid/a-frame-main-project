@@ -78,7 +78,7 @@
       AFRAME.registerComponent('jump', {
       schema: {
         speed: { type: 'number', default: 7.5 },
-        gravity: { type: 'number', default: 13 }
+        gravity: { type: 'number', default: 14.5 }
       },
       init: function () {
         this.baseY = this.el.object3D.position.y;
@@ -145,9 +145,55 @@
     <a-box id="wall-min-x" position="-9.5 2 0" width="0.1" height="4" depth="19" material="color: red; opacity: 0.35; transparent: true; wireframe: true"></a-box>
     <a-box id="wall-max-x" position="9.5 2 0" width="0.1" height="4" depth="19" material="color: red; opacity: 0.35; transparent: true; wireframe: true"></a-box>
 
-    <!-- Adjustable desk and bed collision guides. Move these boxes to match the model. -->
+    <!-- Adjustable desk, dresse, and bed collision guides. Move these boxes to match the model. -->
     <a-box id="bed-collision" position="-4 3.5 -8" width="4" height="2" depth="9.5" material="color: yellow; opacity: 0.35; transparent: true; wireframe: true"></a-box>
-    <a-box id="desk-collision" position="2 1 0.5" width="3.5" height="1.5" depth="4" material="color: cyan; opacity: 0.35; transparent: true; wireframe: true"></a-box>
+    <a-box id="desk-collision" position="2 1 0.7" width="3.5" height="1.5" depth="5" material="color: cyan; opacity: 0.35; transparent: true; wireframe: true"></a-box>
+    <a-box id="dresser-collision" position="4.5 1 -10" width="3.5" height="1.5" depth="5.3" material="color: cyan; opacity: 0.35; transparent: true; wireframe: true"></a-box>
+
+  <!-- === Lava Lamp === -->
+    <a-entity id="lava-lamp" position="-0.3 0 -0.4">
+
+    <!-- main light -->
+      <a-cone
+        obstacle="radius: 0.3"
+        position="-3 4.7 -3.5"
+        radius-bottom="0.25"
+        radius-top="0.1"
+        height="1"
+        color="#47FFC5">
+      </a-cone>
+
+    <!-- top -->
+     <a-cone
+        obstacle="radius: 0.3"
+        position="-3 5.3 -3.5"
+        radius-bottom="0.1"
+        radius-top="0.07"
+        height="0.24"
+        color="#7D7878">
+      </a-cone>
+    
+    <!-- base 1 -->
+     <a-cone
+        obstacle="radius: 0.3"
+        position="-3 4.08 -3.5"
+        radius-bottom="0.15"
+        radius-top="0.25"
+        height="0.24"
+        color="#7D7878">
+      </a-cone>
+
+    <!-- base 2 -->
+     <a-cone
+        obstacle="radius: 0.3"
+        position="-3 3.9 -3.5"
+        radius-bottom="0.25"
+        radius-top="0.11"
+        height="0.35"
+        color="#7D7878">
+      </a-cone>
+
+    </a-entity>
 
     <a-sky color="#202025"></a-sky>
 
@@ -156,7 +202,7 @@
       look-controls
       wasd-controls="acceleration: 40"
       room-walls="minX: -6; maxX: 4; minZ: -13; maxZ: 7.5; radius: 0.35"
-      room-obstacles="obstacles: #desk-collision, #bed-collision; radius: 0.35"
+      room-obstacles="obstacles: #desk-collision, #bed-collision, #dresser-collision; radius: 0.35"
       jump
       position="0 6 3">
     </a-entity>
@@ -164,4 +210,4 @@
   </a-scene>
 
 </body>
-</ht
+</html>
