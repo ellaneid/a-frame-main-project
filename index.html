@@ -6,6 +6,41 @@
   <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
 
   <script>
+
+    AFRAME.registerComponent('color-cycler', {
+
+      // `schema` declares the component's attributes and their types/defaults,
+      // so you can configure instances declaratively, e.g.
+      // color-cycler="colors: red, blue; duration: 300"
+      schema: {
+        colors: { type: 'array', default: ['#EF2D5E', '#4CC3D9', '#FFC65D', '#7BC8A4'] },
+        duration: { type: 'number', default: 200 } // ms, for the little "pulse" animation
+      },
+
+      // `init` runs once, when the component is attached to its entity.
+      // This is where you set initial state and register event listeners.
+      init: function () {
+        this.colorIndex = 0;
+
+        // The entity emits a `click` event whenever a cursor's raycaster
+        // intersects it and the user clicks/taps/gazes at it (see the
+        // <a-entity cursor> on the camera below).
+        this.el.addEventListener('click', () => {
+          this.colorIndex = (this.colorIndex + 1) % this.data.colors.length;
+          this.el.setAttribute('color', this.data.colors[this.colorIndex]);
+
+          // A quick scale "pulse" purely as click feedback.
+          this.el.setAttribute('animation', {
+            property: 'scale',
+            from: '1.3 1.3 1.3',
+            to: '1 1 1',
+            dur: this.data.duration,
+            easing: 'easeOutElastic'
+          });
+        });
+      }
+    });
+
       AFRAME.registerComponent('room-walls', {
         schema: {
           minX: { type: 'number', default: -9.5 },
@@ -160,7 +195,9 @@
         radius-bottom="0.25"
         radius-top="0.1"
         height="1"
-        color="#47FFC5">
+        color="#47FFC5"
+        color-cycler="colors: #47FFC5, #0E5D80"
+        class="clickable">
       </a-cone>
 
     <!-- top -->
@@ -205,6 +242,13 @@
       room-obstacles="obstacles: #desk-collision, #bed-collision, #dresser-collision; radius: 0.35"
       jump
       position="0 6 3">
+      <a-entity
+        cursor="fuse: false"
+        raycaster="objects: .clickable"
+        position="0 0 -1"
+        geometry="primitive: ring; radiusInner: 0.008; radiusOuter: 0.012"
+        material="color: white; shader: flat">
+      </a-entity>
     </a-entity>
 
   </a-scene>
